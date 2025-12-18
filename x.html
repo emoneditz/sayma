@@ -1,0 +1,912 @@
+<script>if(!localStorage.getItem('rumi_access')){window.location.replace("index.html");}</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Rumaisa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #1a0505;
+            --bubble-me: #4a0404;
+            --bubble-rumaisa: #1f0a0a;
+            --text-primary: #ffffff;
+            --text-secondary: #bf8080;
+            --border-color: #4a0404;
+            --input-bg: #0f0202;
+            --accent-maroon: #800000;
+        }
+
+        * {
+            -webkit-font-smoothing: antialiased;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        .chat-container {
+            width: 100%;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: var(--bg-primary);
+        }
+
+        .chat-container::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 92% -10%, rgba(128, 0, 0, 0.4) 0%, transparent 60%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .chat-header {
+            background: rgba(0, 0, 0, 0.9);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            text-align: center;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 1rem;
+            padding-bottom: calc(1rem + 4.5rem + env(safe-area-inset-bottom));
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            overscroll-behavior-y: contain;
+        }
+
+        .message {
+            max-width: 82%;
+            margin: 0.4rem 0;
+            padding: 0.6rem 0.9rem;
+            border-radius: 1rem;
+            position: relative;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            border: 1px solid transparent;
+            font-size: 0.95rem;
+        }
+
+        .message.selected {
+            border-color: var(--accent-maroon);
+            background: var(--bg-secondary);
+        }
+
+        .me { 
+            background: var(--bubble-me);
+            margin-left: auto; 
+            border-bottom-right-radius: 0.2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .rumaisa { 
+            background: var(--bubble-rumaisa);
+            margin-right: auto; 
+            border-bottom-left-radius: 0.2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .message-time { 
+            font-size: 0.6rem; 
+            color: var(--text-secondary);
+            opacity: 0.7; 
+            margin-top: 2px; 
+            float: right; 
+            margin-left: 8px;
+        }
+
+        .media, .media-video, audio { 
+            display: block; 
+            max-width: 100%; 
+            border-radius: 0.6rem; 
+            margin-bottom: 0.4rem;
+        }
+        
+        audio {
+            height: 40px;
+            width: 220px;
+            filter: invert(1) hue-rotate(180deg);
+        }
+        
+        .media-video { width: 100%; max-height: 250px; }
+
+        /* Input Bar */
+        .input-box {
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 0.6rem;
+            padding-bottom: calc(0.6rem + env(safe-area-inset-bottom));
+            background: #000;
+            border-top: 1px solid var(--border-color);
+            z-index: 50;
+        }
+
+        .input-content-wrapper { display: flex; align-items: flex-end; width: 100%; max-width: 800px; gap: 0.5rem; }
+        .input-area-container { display: flex; flex-direction: column; flex-grow: 1; gap: 0.4rem; }
+
+        .message-input-wrapper { 
+            flex: 1; display: flex; align-items: center; 
+            background: var(--input-bg);
+            border-radius: 1.5rem; 
+            border: 1px solid var(--border-color);
+            min-height: 2.8rem; 
+            padding-right: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .message-input { 
+            flex: 1; border: none; background: transparent; 
+            padding: 0.6rem 0.9rem; font-size: 0.95rem; 
+            outline: none; resize: none; max-height: 100px; 
+            color: white; font-family: inherit;
+        }
+
+        /* Recording UI overlay */
+        #recordingUI {
+            display: none;
+            flex: 1;
+            align-items: center;
+            padding: 0 1rem;
+            color: #ff453a;
+            font-weight: 500;
+            justify-content: space-between;
+        }
+        
+        .send-button, .plus-button, .mic-button { 
+            width: 2.6rem; height: 2.6rem; 
+            border-radius: 50%; 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 1rem; 
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .plus-button, .mic-button { background: transparent; color: var(--text-secondary); border: none; }
+        .send-button { background: var(--accent-maroon); color: white; border: none; }
+        .send-button:disabled { background: #222; color: #555; }
+
+        .mic-button.recording {
+            color: #ff453a;
+            background: rgba(255, 69, 58, 0.15);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 69, 58, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 69, 58, 0); }
+        }
+
+        .cancel-voice-btn {
+            color: #ff453a;
+            padding: 5px;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .file-info-bar, .date-separator { display: flex; }
+        .file-info-bar { 
+            display: none; padding: 0.5rem; background: var(--bg-secondary); 
+            border-radius: 0.5rem; align-items: center; justify-content: space-between; 
+        }
+        .file-info-bar.show { display: flex; }
+
+        .date-separator { justify-content: center; margin: 1.2rem 0; opacity: 0.8; }
+        .date-separator span { 
+            background: var(--bg-secondary); border: 1px solid var(--border-color); 
+            color: var(--text-secondary); padding: 2px 8px; 
+            border-radius: 8px; font-size: 0.65rem; 
+        }
+
+        #messageActionMenu { 
+            display: none; position: absolute; z-index: 101; 
+            width: 280px; 
+        }
+        #messageActionMenu.visible { display: block; }
+        
+        .context-menu-box {
+            background: #0f0505;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }
+
+        #quickReactions {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border-color);
+            transition: max-height 0.2s ease;
+        }
+
+        #quickReactions.collapsed { max-height: 40px; overflow: hidden; }
+        #quickReactions.expanded { max-height: 180px; overflow-y: auto; }
+
+        .reaction-emoji-btn {
+            font-size: 1.4rem;
+            padding: 2px;
+            text-align: center;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+        }
+
+        .expand-btn {
+            font-size: 0.9rem;
+            background: rgba(128,0,0,0.2);
+            border-radius: 50%;
+            color: var(--text-secondary);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .context-action-btn {
+            display: flex; align-items: center; padding: 10px; width: 100%; 
+            color: white; font-size: 0.9rem; background: transparent; 
+            border: none; text-align: left;
+        }
+        .context-action-btn i { width: 24px; color: var(--text-secondary); }
+
+        .reactions-container {
+            position: absolute; bottom: -8px; right: 8px; 
+            display: flex; gap: 2px;
+            background: #2a0505; padding: 2px 6px; 
+            border-radius: 8px; border: 1px solid var(--border-color);
+            display: none; z-index: 5;
+        }
+        .message.me .reactions-container { right: auto; left: 8px; }
+        .reactions-container.visible { display: flex; }
+        .reaction-pill { font-size: 0.7rem; }
+
+        .load-more {
+            background: var(--input-bg); border: 1px solid var(--border-color);
+            color: #888; padding: 6px 12px; border-radius: 12px;
+            margin: 10px auto; text-align: center; font-size: 0.8rem; width: fit-content;
+        }
+        
+        #sentNotification {
+            position: fixed; top: 10%; left: 50%; transform: translateX(-50%);
+            padding: 8px 16px; background: #000; border: 1px solid var(--accent-maroon);
+            border-radius: 20px; color: white; z-index: 200; display: none;
+        }
+        #sentNotification.show { display: flex; gap: 8px; align-items: center; }
+
+        .modal-container { display: none; position: fixed; inset: 0; background: #000; z-index: 200; justify-content: center; align-items: center; }
+        .modal-content { max-width: 100%; max-height: 100%; }
+        .close-modal-btn { position: absolute; top: 20px; right: 20px; color: white; font-size: 30px; }
+        
+        .reply-preview { padding: 4px; margin-bottom: 4px; background: rgba(255,255,255,0.05); border-left: 2px solid var(--accent-maroon); font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <h3 class="font-bold text-lg">Sayma</h3>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+        <div class="load-more" id="loadMore" style="display: none;">Load older messages</div>
+    </div>
+
+    <div id="sentNotification">
+        <i id="sentIcon" class="fas fa-check-circle text-green-500"></i>
+        <span id="sentMessage">Sent</span>
+    </div>
+
+    <div class="input-box" id="inputBox">
+        <input type="file" id="fileInput" class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.txt">
+        <div class="input-content-wrapper">
+            <div class="input-area-container">
+                 <div id="replyingToBar" class="file-info-bar">
+                    <div class="flex items-center flex-1 overflow-hidden">
+                        <i class="fas fa-reply text-gray-500 mr-2"></i>
+                        <div class="flex flex-col overflow-hidden">
+                             <span class="text-xs text-gray-400">Replying to <span id="replyingToUser" class="text-white font-bold"></span></span>
+                             <span id="replyingToText" class="text-white text-xs truncate"></span>
+                        </div>
+                    </div>
+                    <button id="replyCloseBtn" class="text-gray-400 p-2"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <div id="fileInfoBar" class="file-info-bar">
+                    <div class="flex items-center flex-1 overflow-hidden">
+                        <i id="fileIcon" class="text-white mr-2"></i>
+                        <span id="fileName" class="text-white text-xs truncate"></span>
+                    </div>
+                    <button id="fileCloseBtn" class="text-gray-400 p-2"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="message-input-wrapper">
+                    <button type="button" class="plus-button" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    
+                    <!-- Text Area -->
+                    <textarea id="msg" class="message-input" placeholder="Message..." rows="1"></textarea>
+                    
+                    <!-- Recording UI (Hidden by default) -->
+                    <div id="recordingUI">
+                        <span class="animate-pulse">Recording...</span>
+                        <div class="cancel-voice-btn" onclick="cancelRecording()">
+                            <i class="fas fa-trash-alt"></i>
+                        </div>
+                    </div>
+
+                    <button id="micBtn" class="mic-button" onclick="toggleRecording()">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="button" class="send-button" onclick="sendMessage()" id="sendBtn" disabled>
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-container" id="modalContainer">
+    <div class="close-modal-btn" onclick="document.getElementById('modalContainer').style.display='none'">&times;</div>
+    <img class="modal-content" id="fullImage" src="">
+</div>
+
+<div id="messageActionMenu">
+    <div class="context-menu-box">
+        <div id="quickReactions" class="collapsed">
+            <!-- Populated by JS -->
+        </div>
+        <div class="flex flex-col">
+            <button id="replyBtn" class="context-action-btn"><i class="fas fa-reply"></i> Reply</button>
+            <button id="copyBtn" class="context-action-btn"><i class="fas fa-copy"></i> Copy</button>
+            <button id="deleteBtn" class="context-action-btn text-red-500"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const TOKEN = "8373355359:AAF0b7kWG2mNFv0qBYt2YTjvW5mD6eSBCuw";
+    const CHAT_ID = "6009819572";
+    const RUMAISA_ID = 6009819572; 
+    
+    // UI Elements
+    const chatBox = document.getElementById('chatBox');
+    const loadMoreBtn = document.getElementById('loadMore');
+    const messageInput = document.getElementById('msg');
+    const sendBtn = document.getElementById('sendBtn');
+    const messageActionMenu = document.getElementById('messageActionMenu');
+    const quickReactions = document.getElementById('quickReactions');
+    const micBtn = document.getElementById('micBtn');
+    const recordingUI = document.getElementById('recordingUI');
+    
+    // State
+    let chatHistory = [];
+    let historyOffset = 0;
+    let lastUpdateId = 0;
+    let activeMessageElement = null;
+    let activeReplyMessage = null;
+    let isReactionExpanded = false;
+    
+    // Voice State
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+    let isCancelled = false; 
+
+    // Emoji List
+    const allReactions = [
+        '❤️', '🤷‍♀️', '😐', '😭', '👍', '🤣', '👎', '🫡', 
+        '💔', '😇', '🌚', '🥰', '😡', '🥴', '🤔', '🤨', 
+        '🤓', '🖕', '😁', '🤡', '🤝', '🙏', '🍓', '🔥', 
+        '👏', '🤯', '😱', '🤬', '😢', '🎉', '🤩', '🤮', 
+        '💩', '👌', '🕊️', '🥱', '😍', '🐳', '❤️‍🔥', '🌭', 
+        '💯', '⚡', '🍌', '🏆', '🍾', '💋', '😈', '😴', 
+        '👻', '🧑‍💻', '👀', '🎃', '🙈', '😨', '✍️', '🤗', 
+        '🎅', '🎄', '☃️', '💅', '🤪', '🗿', '🆒', '💘', 
+        '🙉', '🦄', '😘', '💊', '🙊', '😎', '👾', '🤷‍♂️'
+    ];
+
+    function init() {
+        loadChatHistory();
+        pollMessages();
+        
+        document.addEventListener('click', (e) => {
+            if (!messageActionMenu.contains(e.target)) {
+                messageActionMenu.classList.remove('visible');
+                if(activeMessageElement) activeMessageElement.classList.remove('selected');
+                isReactionExpanded = false;
+            }
+        });
+
+        document.getElementById('replyBtn').onclick = (e) => { e.stopPropagation(); setupReply(); };
+        document.getElementById('copyBtn').onclick = (e) => { e.stopPropagation(); copyText(); };
+        document.getElementById('deleteBtn').onclick = (e) => { e.stopPropagation(); deleteMsg(); };
+        
+        messageInput.addEventListener('input', () => { 
+            messageInput.style.height = 'auto'; 
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
+            sendBtn.disabled = !messageInput.value.trim();
+        });
+        
+        document.getElementById('fileInput').onchange = (e) => {
+            if(e.target.files[0]) {
+                document.getElementById('fileName').textContent = e.target.files[0].name;
+                document.getElementById('fileInfoBar').classList.add('show');
+                sendBtn.disabled = false;
+            }
+        };
+
+        document.getElementById('fileCloseBtn').onclick = () => {
+             document.getElementById('fileInput').value = '';
+             document.getElementById('fileInfoBar').classList.remove('show');
+             sendBtn.disabled = !messageInput.value.trim();
+        };
+
+        document.getElementById('replyCloseBtn').onclick = () => {
+            activeReplyMessage = null;
+            document.getElementById('replyingToBar').classList.remove('show');
+        };
+
+        loadMoreBtn.onclick = loadOlderMessages;
+    }
+
+    // --- Voice Logic (Cancel Added) ---
+    async function toggleRecording() {
+        if (!isRecording) {
+            // Start Recording
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                isCancelled = false;
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                // UI Changes
+                micBtn.classList.add('recording');
+                messageInput.style.display = 'none';
+                recordingUI.style.display = 'flex';
+                
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
+
+                mediaRecorder.addEventListener("stop", () => {
+                    if (!isCancelled) {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                        sendVoice(audioBlob);
+                    }
+                    // Reset UI
+                    isRecording = false;
+                    micBtn.classList.remove('recording');
+                    messageInput.style.display = 'block';
+                    recordingUI.style.display = 'none';
+                });
+
+            } catch (err) {
+                alert("Microphone access denied.");
+            }
+        } else {
+            // Stop & Send
+            mediaRecorder.stop();
+        }
+    }
+
+    function cancelRecording() {
+        if (mediaRecorder && isRecording) {
+            isCancelled = true; // Set flag so it doesn't send
+            mediaRecorder.stop();
+        }
+    }
+
+    async function sendVoice(blob) {
+        const tempId = Date.now().toString();
+        const url = URL.createObjectURL(blob);
+        
+        const msg = {
+            id: tempId,
+            sender: 'me',
+            mediaUrl: url,
+            mediaType: 'voice',
+            timestamp: Date.now(),
+            replyTo: activeReplyMessage ? activeReplyMessage.id : null,
+            reactions: {}
+        };
+        
+        chatHistory.push(msg);
+        saveChatHistory();
+        chatBox.appendChild(createMsgEl(msg));
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        const formData = new FormData();
+        formData.append("chat_id", CHAT_ID);
+        formData.append("voice", blob, "voice.mp3");
+        
+        try {
+            const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendVoice`, {
+                method: "POST", body: formData
+            });
+            const d = await res.json();
+            if(d.ok) {
+                const m = chatHistory.find(x => x.id === tempId);
+                if(m) m.telegramMessageId = d.result.message_id;
+                saveChatHistory();
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    // --- Reaction Logic ---
+    function getReactionUsage() {
+        try { return JSON.parse(localStorage.getItem('reactionUsage')) || {}; } 
+        catch { return {}; }
+    }
+
+    function populateReactions() {
+        const usage = getReactionUsage();
+        const sorted = [...allReactions].sort((a, b) => (usage[b] || 0) - (usage[a] || 0));
+        let html = '';
+
+        if (!isReactionExpanded) {
+            const top5 = sorted.slice(0, 5);
+            html = top5.map(e => `<button class="reaction-emoji-btn" onclick="event.stopPropagation(); handleReaction('${e}')">${e}</button>`).join('');
+            html += `<button class="reaction-emoji-btn expand-btn" onclick="event.stopPropagation(); toggleReactionExpand()"><i class="fas fa-chevron-down"></i></button>`;
+            quickReactions.className = 'collapsed';
+        } else {
+            html = sorted.map(e => `<button class="reaction-emoji-btn" onclick="event.stopPropagation(); handleReaction('${e}')">${e}</button>`).join('');
+            html += `<button class="reaction-emoji-btn expand-btn" onclick="event.stopPropagation(); toggleReactionExpand()"><i class="fas fa-chevron-up"></i></button>`;
+            quickReactions.className = 'expanded';
+        }
+        quickReactions.innerHTML = html;
+    }
+
+    function toggleReactionExpand() {
+        isReactionExpanded = !isReactionExpanded;
+        populateReactions();
+    }
+
+    function handleReaction(emoji) {
+        const usage = getReactionUsage();
+        usage[emoji] = (usage[emoji] || 0) + 1;
+        localStorage.setItem('reactionUsage', JSON.stringify(usage));
+        
+        if (activeMessageElement) {
+            const id = activeMessageElement.dataset.messageId;
+            const msg = chatHistory.find(m => m.id == id);
+            if (msg) {
+                if(msg.reactions[emoji]) delete msg.reactions[emoji];
+                else msg.reactions[emoji] = 1;
+                saveChatHistory();
+                renderReactions(activeMessageElement, msg.reactions);
+                if (msg.telegramMessageId) {
+                    const r = Object.keys(msg.reactions).map(e => ({ type: 'emoji', emoji: e }));
+                    fetch(`https://api.telegram.org/bot${TOKEN}/setMessageReaction`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ chat_id: CHAT_ID, message_id: msg.telegramMessageId, reaction: r })
+                    });
+                }
+            }
+        }
+        messageActionMenu.classList.remove('visible');
+        if(activeMessageElement) activeMessageElement.classList.remove('selected');
+        isReactionExpanded = false;
+    }
+
+    // --- Core Chat ---
+    function loadChatHistory() {
+        chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+        renderMessages(20);
+    }
+
+    function saveChatHistory() {
+        if(chatHistory.length > 60) chatHistory = chatHistory.slice(chatHistory.length - 60);
+        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+    }
+
+    function renderMessages(count) {
+        chatBox.innerHTML = '';
+        chatBox.appendChild(loadMoreBtn);
+        const slice = chatHistory.slice(-count);
+        let lastDate = '';
+        slice.forEach(msg => {
+            const d = new Date(msg.timestamp).toDateString();
+            if(d !== lastDate) { addDate(d); lastDate = d; }
+            chatBox.appendChild(createMsgEl(msg));
+        });
+        if (chatHistory.length > count) {
+            loadMoreBtn.style.display = 'block';
+            historyOffset = count;
+        } else {
+            loadMoreBtn.style.display = 'none';
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addDate(t, top=false) {
+        const d = document.createElement('div');
+        d.className = 'date-separator';
+        d.innerHTML = `<span>${t}</span>`;
+        if(top) chatBox.insertBefore(d, loadMoreBtn.nextSibling);
+        else chatBox.appendChild(d);
+    }
+
+    function createMsgEl(msg) {
+        const div = document.createElement('div');
+        div.className = `message ${msg.sender}`;
+        div.dataset.messageId = msg.id;
+        div.onclick = (e) => { e.stopPropagation(); openMenu(div); };
+
+        let content = '';
+        if(msg.replyTo) {
+             const orig = chatHistory.find(m => m.id === msg.replyTo);
+             const name = orig ? (orig.sender === 'me' ? 'You' : 'Rumaisa') : 'Unknown';
+             const txt = orig ? (orig.text || 'Media') : 'Deleted';
+             content += `<div class="reply-preview"><div style="color:var(--accent-maroon);font-weight:bold;">${name}</div><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${txt}</div></div>`;
+        }
+
+        if(msg.mediaUrl) {
+            if(msg.mediaType === 'image') content += `<img src="${msg.mediaUrl}" class="media" onclick="event.stopPropagation();viewImg('${msg.mediaUrl}')">`;
+            else if(msg.mediaType === 'video') content += `<video src="${msg.mediaUrl}" class="media-video" controls></video>`;
+            else if(msg.mediaType === 'voice') content += `<audio src="${msg.mediaUrl}" controls></audio>`;
+            else content += `<div style="background:#222;padding:8px;border-radius:8px;"><i class="fas fa-file text-red-500"></i> ${msg.fileName}</div>`;
+        }
+        
+        if(msg.text) content += `<div>${msg.text}</div>`;
+        content += `<div class="message-time">${new Date(msg.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`;
+        content += `<div class="reactions-container"></div>`;
+        
+        div.innerHTML = content;
+        if(msg.reactions) renderReactions(div, msg.reactions);
+        return div;
+    }
+    
+    function renderReactions(el, reactions) {
+        const c = el.querySelector('.reactions-container');
+        if(!reactions || Object.keys(reactions).length === 0) {
+            c.classList.remove('visible'); return;
+        }
+        c.innerHTML = Object.keys(reactions).map(k => `<span class="reaction-pill">${k}</span>`).join('');
+        c.classList.add('visible');
+    }
+
+    function openMenu(el) {
+        if(activeMessageElement) activeMessageElement.classList.remove('selected');
+        activeMessageElement = el;
+        el.classList.add('selected');
+        isReactionExpanded = false; 
+        populateReactions();
+
+        const rect = el.getBoundingClientRect();
+        let top = rect.top - 200; 
+        let left = (window.innerWidth - 280) / 2;
+        if(top < 50) top = rect.bottom + 10;
+        messageActionMenu.style.top = top + 'px';
+        messageActionMenu.style.left = left + 'px';
+        messageActionMenu.classList.add('visible');
+    }
+
+    async function sendMessage() {
+        const txt = messageInput.value.trim();
+        const file = document.getElementById('fileInput').files[0];
+        if(!txt && !file) return;
+
+        const tempId = Date.now().toString();
+        const msg = {
+            id: tempId,
+            text: txt,
+            sender: 'me',
+            timestamp: Date.now(),
+            replyTo: activeReplyMessage ? activeReplyMessage.id : null,
+            reactions: {},
+            mediaUrl: file ? URL.createObjectURL(file) : null,
+            mediaType: file ? (file.type.includes('image')?'image':file.type.includes('video')?'video':'doc') : null,
+            fileName: file ? file.name : null
+        };
+        
+        chatHistory.push(msg);
+        saveChatHistory();
+        chatBox.appendChild(createMsgEl(msg));
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('fileInfoBar').classList.remove('show');
+        sendBtn.disabled = true;
+        const replyParam = activeReplyMessage && activeReplyMessage.telegramMessageId ? { message_id: activeReplyMessage.telegramMessageId } : null;
+        activeReplyMessage = null;
+        document.getElementById('replyingToBar').classList.remove('show');
+
+        const formData = new FormData();
+        formData.append('chat_id', CHAT_ID);
+        if(replyParam) formData.append('reply_parameters', JSON.stringify(replyParam));
+        
+        let url = `https://api.telegram.org/bot${TOKEN}/sendMessage`;
+        if(file) {
+            url = `https://api.telegram.org/bot${TOKEN}/${msg.mediaType === 'image' ? 'sendPhoto' : msg.mediaType === 'video' ? 'sendVideo' : 'sendDocument'}`;
+            formData.append(msg.mediaType === 'image' ? 'photo' : msg.mediaType === 'video' ? 'video' : 'document', file);
+            if(txt) formData.append('caption', txt);
+        } else {
+            formData.append('text', txt);
+        }
+
+        try {
+            const res = await fetch(url, { method: 'POST', body: formData });
+            const d = await res.json();
+            if(d.ok) {
+                const m = chatHistory.find(x => x.id === tempId);
+                if(m) m.telegramMessageId = d.result.message_id;
+                saveChatHistory();
+            }
+        } catch(e) { console.log(e); }
+    }
+
+    function pollMessages() {
+        fetch(`https://api.telegram.org/bot${TOKEN}/getUpdates?offset=${lastUpdateId+1}&timeout=30&allowed_updates=["message","message_reaction"]`)
+        .then(r=>r.json()).then(d => {
+            if(d.ok && d.result.length) {
+                d.result.forEach(u => {
+                    lastUpdateId = u.update_id;
+                    if(u.message) processMsg(u.message);
+                    if(u.message_reaction) processReaction(u.message_reaction);
+                });
+            }
+            pollMessages();
+        }).catch(() => setTimeout(pollMessages, 5000));
+    }
+
+    function processMsg(m) {
+        if(chatHistory.some(x => x.telegramMessageId === m.message_id)) return;
+        if(m.text && m.text.includes("MESSAGE HAS BEEN DELETED")) return;
+
+        const sender = m.from.id === RUMAISA_ID ? 'rumaisa' : 'me';
+        let txt = m.text || m.caption;
+        let url = null, type = null, fname = null;
+
+        if(m.voice || m.audio) { // Handle Voice/Audio from Telegram
+             const f = m.voice || m.audio;
+             type = 'voice';
+             fetch(`https://api.telegram.org/bot${TOKEN}/getFile?file_id=${f.file_id}`)
+             .then(r=>r.json()).then(fd => {
+                 if(fd.ok) {
+                     url = `https://api.telegram.org/file/bot${TOKEN}/${fd.result.file_path}`;
+                     addIncomingMsg(m, sender, txt, url, type, 'Voice Note');
+                 }
+             });
+             return;
+        }
+
+        if(m.photo || m.video || m.document) {
+             const f = m.photo ? m.photo.pop() : (m.video || m.document);
+             type = m.photo ? 'image' : (m.video ? 'video' : 'doc');
+             fname = f.file_name || 'file';
+             fetch(`https://api.telegram.org/bot${TOKEN}/getFile?file_id=${f.file_id}`)
+             .then(r=>r.json()).then(fd => {
+                 if(fd.ok) {
+                     url = `https://api.telegram.org/file/bot${TOKEN}/${fd.result.file_path}`;
+                     addIncomingMsg(m, sender, txt, url, type, fname);
+                 }
+             });
+             return;
+        }
+        addIncomingMsg(m, sender, txt, null, null, null);
+    }
+
+    function addIncomingMsg(m, sender, txt, url, type, fname) {
+        const newMsg = {
+            id: Date.now() + Math.random(),
+            sender: sender,
+            text: txt,
+            mediaUrl: url, mediaType: type, fileName: fname,
+            timestamp: m.date * 1000,
+            telegramMessageId: m.message_id,
+            reactions: {}
+        };
+        chatHistory.push(newMsg);
+        saveChatHistory();
+        chatBox.appendChild(createMsgEl(newMsg));
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    
+    function processReaction(r) {
+        const m = chatHistory.find(x => x.telegramMessageId === r.message_id);
+        if(m) {
+            const reacts = {};
+            r.new_reaction.forEach(x => { if(x.type === 'emoji') reacts[x.emoji] = 1; });
+            m.reactions = reacts;
+            saveChatHistory();
+            const el = document.querySelector(`div[data-message-id='${m.id}']`);
+            if(el) renderReactions(el, reacts);
+        }
+    }
+
+    function loadOlderMessages() {
+        if(historyOffset >= chatHistory.length) return;
+        loadMoreBtn.innerHTML = 'Loading...';
+        setTimeout(() => {
+            const start = Math.max(0, chatHistory.length - historyOffset - 20);
+            const slice = chatHistory.slice(start, chatHistory.length - historyOffset).reverse();
+            slice.forEach(m => chatBox.insertBefore(createMsgEl(m), loadMoreBtn.nextSibling));
+            historyOffset += 20;
+            loadMoreBtn.innerHTML = 'Load older messages';
+            if(historyOffset >= chatHistory.length) loadMoreBtn.style.display = 'none';
+        }, 500);
+    }
+
+    function deleteMsg() {
+        if(!activeMessageElement) return;
+        const id = activeMessageElement.dataset.messageId;
+        const idx = chatHistory.findIndex(m => m.id == id);
+        if(idx > -1) {
+            const m = chatHistory[idx];
+            fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({chat_id:CHAT_ID, text:`"${(m.text||'File').substr(0,20)}..." DELETED`})
+            });
+            chatHistory.splice(idx,1);
+            saveChatHistory();
+            activeMessageElement.remove();
+        }
+        messageActionMenu.classList.remove('visible');
+    }
+
+    function setupReply() {
+        if(!activeMessageElement) return;
+        const m = chatHistory.find(x => x.id == activeMessageElement.dataset.messageId);
+        if(m) {
+            activeReplyMessage = m;
+            document.getElementById('replyingToUser').textContent = m.sender === 'me' ? 'You' : 'Rumaisa';
+            document.getElementById('replyingToText').textContent = m.text || 'Media';
+            document.getElementById('replyingToBar').classList.add('show');
+        }
+        messageActionMenu.classList.remove('visible');
+    }
+
+    function copyText() {
+        if(activeMessageElement) {
+            const t = activeMessageElement.innerText;
+            navigator.clipboard.writeText(t);
+            const n = document.getElementById('sentNotification');
+            n.style.display = 'flex';
+            setTimeout(() => n.style.display = 'none', 2000);
+        }
+        messageActionMenu.classList.remove('visible');
+    }
+    
+    function viewImg(url) {
+        document.getElementById('fullImage').src = url;
+        document.getElementById('modalContainer').style.display = 'flex';
+    }
+
+    init();
+</script>
+</body>
+  </html>
