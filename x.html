@@ -1,4 +1,10 @@
-<script>if(!localStorage.getItem('rumi_access')){window.location.replace("index.html");}</script>
+<script>
+    // STRICT SECURITY CHECK
+    // If user didn't type password in THIS browser session, kick them out.
+    if(!sessionStorage.getItem('rumi_access')){
+        window.location.replace("index.html");
+    }
+</script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
