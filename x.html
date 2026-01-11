@@ -463,7 +463,11 @@
         document.getElementById('fileInput').onchange = (e) => {
             if(e.target.files.length > 0) {
                 const count = e.target.files.length;
-                const name = count > 1 ? `${count} files selected` : e.target.files[0].name;
+                let name = count > 1 ? `${count} files selected` : e.target.files[0].name;
+                
+                // --- TRUNCATE CHANGE ADDED HERE ---
+                if (count === 1 && name.length > 7) name = name.substring(0, 7) + "...";
+                
                 document.getElementById('fileName').textContent = name;
                 document.getElementById('fileInfoBar').classList.add('show');
                 sendBtn.disabled = false;
