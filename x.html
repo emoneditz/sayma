@@ -24,7 +24,6 @@
             --border-color: #4a0404;
             --input-bg: #0f0202;
             --accent-maroon: #800000;
-            --error-red: #8a0000;
         }
 
         * {
@@ -300,45 +299,18 @@
             margin: 10px auto; text-align: center; font-size: 0.8rem; width: fit-content;
         }
         
-        #sentNotification, #errorNotification {
+        #sentNotification {
             position: fixed; top: 10%; left: 50%; transform: translateX(-50%);
             padding: 8px 16px; background: #000; border: 1px solid var(--accent-maroon);
             border-radius: 20px; color: white; z-index: 200; display: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        #sentNotification.show, #errorNotification.show { display: flex; gap: 8px; align-items: center; }
-        
-        #errorNotification { border-color: var(--error-red); }
+        #sentNotification.show { display: flex; gap: 8px; align-items: center; }
 
         .modal-container { display: none; position: fixed; inset: 0; background: #000; z-index: 200; justify-content: center; align-items: center; }
         .modal-content { max-width: 100%; max-height: 100%; }
         .close-modal-btn { position: absolute; top: 20px; right: 20px; color: white; font-size: 30px; }
         
         .reply-preview { padding: 4px; margin-bottom: 4px; background: rgba(255,255,255,0.05); border-left: 2px solid var(--accent-maroon); font-size: 0.75rem; }
-
-        /* Upload Progress Bar */
-        .upload-bar-container {
-            position: fixed;
-            bottom: calc(4.5rem + env(safe-area-inset-bottom));
-            left: 50%;
-            transform: translateX(-50%);
-            width: 85%;
-            max-width: 300px;
-            background: rgba(20, 5, 5, 0.95);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 10px 15px;
-            display: none;
-            flex-direction: column;
-            gap: 5px;
-            z-index: 45;
-            backdrop-filter: blur(5px);
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.5);
-        }
-        .upload-bar-container.visible { display: flex; }
-        .upload-info { display: flex; justify-content: space-between; font-size: 0.75rem; color: #ccc; }
-        .progress-track { width: 100%; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--accent-maroon); width: 0%; transition: width 0.3s ease; }
     </style>
 </head>
 <body>
@@ -352,30 +324,12 @@
         <div class="load-more" id="loadMore" style="display: none;">Load older messages</div>
     </div>
 
-    <!-- Notifications -->
     <div id="sentNotification">
         <i id="sentIcon" class="fas fa-check-circle text-green-500"></i>
         <span id="sentMessage">Sent</span>
     </div>
 
-    <div id="errorNotification">
-        <i class="fas fa-exclamation-circle text-red-500"></i>
-        <span id="errorText">Failed</span>
-    </div>
-
-    <!-- Upload Progress Bar -->
-    <div id="uploadBar" class="upload-bar-container">
-        <div class="upload-info">
-            <span id="uploadStatusText">Uploading...</span>
-            <span id="uploadCount">0/0</span>
-        </div>
-        <div class="progress-track">
-            <div id="progressFill" class="progress-fill"></div>
-        </div>
-    </div>
-
     <div class="input-box" id="inputBox">
-        <!-- Added multiple attribute here -->
         <input type="file" id="fileInput" class="hidden" multiple accept="image/*,video/*,.pdf,.doc,.docx,.txt">
         <div class="input-content-wrapper">
             <div class="input-area-container">
@@ -403,10 +357,8 @@
                         <i class="fas fa-paperclip"></i>
                     </button>
                     
-                    <!-- Text Area -->
                     <textarea id="msg" class="message-input" placeholder="Message..." rows="1"></textarea>
                     
-                    <!-- Recording UI (Hidden by default) -->
                     <div id="recordingUI">
                         <span class="animate-pulse">Recording...</span>
                         <div class="cancel-voice-btn" onclick="cancelRecording()">
@@ -434,8 +386,7 @@
 <div id="messageActionMenu">
     <div class="context-menu-box">
         <div id="quickReactions" class="collapsed">
-            <!-- Populated by JS -->
-        </div>
+            </div>
         <div class="flex flex-col">
             <button id="replyBtn" class="context-action-btn"><i class="fas fa-reply"></i> Reply</button>
             <button id="copyBtn" class="context-action-btn"><i class="fas fa-copy"></i> Copy</button>
@@ -508,15 +459,12 @@
             sendBtn.disabled = !messageInput.value.trim();
         });
         
-        // Modified to support multiple file count display
+        // UPDATED: Handle multiple file display
         document.getElementById('fileInput').onchange = (e) => {
-            const files = e.target.files;
-            if(files && files.length > 0) {
-                if(files.length === 1) {
-                    document.getElementById('fileName').textContent = files[0].name;
-                } else {
-                    document.getElementById('fileName').textContent = `${files.length} files selected`;
-                }
+            if(e.target.files.length > 0) {
+                const count = e.target.files.length;
+                const name = count > 1 ? `${count} files selected` : e.target.files[0].name;
+                document.getElementById('fileName').textContent = name;
                 document.getElementById('fileInfoBar').classList.add('show');
                 sendBtn.disabled = false;
             }
@@ -571,7 +519,7 @@
                 });
 
             } catch (err) {
-                showError("Microphone access denied");
+                alert("Microphone access denied.");
             }
         } else {
             // Stop & Send
@@ -619,11 +567,11 @@
                 if(m) m.telegramMessageId = d.result.message_id;
                 saveChatHistory();
             } else {
-                showError("Failed to send voice");
+                throw new Error("API Error"); // Trigger catch
             }
         } catch(e) { 
-            console.error(e); 
-            showError("Network error");
+            console.error(e);
+            showErrorPopup("⚠️ File Upload Failed!"); 
         }
     }
 
@@ -776,118 +724,90 @@
         messageActionMenu.classList.add('visible');
     }
 
-    function showError(text) {
-        const n = document.getElementById('errorNotification');
-        const t = document.getElementById('errorText');
-        t.innerText = text;
-        n.classList.add('show');
-        setTimeout(() => n.classList.remove('show'), 3000);
-    }
-
+    // UPDATED: Async send function handling multiple files loop
     async function sendMessage() {
         const txt = messageInput.value.trim();
-        const files = document.getElementById('fileInput').files;
+        const files = document.getElementById('fileInput').files; // Get FileList
         
-        if(!txt && (!files || files.length === 0)) return;
+        if(!txt && files.length === 0) return;
 
-        // Common Reset UI
-        sendBtn.disabled = true;
-        const replyParam = activeReplyMessage && activeReplyMessage.telegramMessageId ? { message_id: activeReplyMessage.telegramMessageId } : null;
-        const currentReplyId = activeReplyMessage ? activeReplyMessage.id : null;
-        
-        // Reset Inputs
-        activeReplyMessage = null;
-        document.getElementById('replyingToBar').classList.remove('show');
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-        document.getElementById('fileInput').value = '';
-        document.getElementById('fileInfoBar').classList.remove('show');
-
-        // Logic for Text Only
-        if (!files || files.length === 0) {
-            await sendSingleMessage(txt, null, replyParam, currentReplyId);
-            return;
-        }
-
-        // Logic for Files (with Progress Bar)
-        const total = files.length;
-        const bar = document.getElementById('uploadBar');
-        const fill = document.getElementById('progressFill');
-        const countTxt = document.getElementById('uploadCount');
-        
-        bar.classList.add('visible');
-        fill.style.width = '0%';
-        countTxt.innerText = `0/${total}`;
-
-        for (let i = 0; i < total; i++) {
-            const file = files[i];
-            const caption = (i === 0) ? txt : ""; // Only caption first file
-            
-            try {
-                await sendSingleMessage(caption, file, replyParam, currentReplyId);
-            } catch (err) {
-                showError("File upload failed");
-            }
-            
-            const pct = Math.round(((i + 1) / total) * 100);
-            fill.style.width = `${pct}%`;
-            countTxt.innerText = `${i+1}/${total}`;
-        }
-
-        setTimeout(() => {
-            bar.classList.remove('visible');
-        }, 1000);
-    }
-
-    async function sendSingleMessage(text, file, replyParam, localReplyId) {
-        const tempId = Date.now().toString() + Math.random().toString();
-        const msg = {
-            id: tempId,
-            text: text,
-            sender: 'me',
-            timestamp: Date.now(),
-            replyTo: localReplyId,
-            reactions: {},
-            mediaUrl: file ? URL.createObjectURL(file) : null,
-            mediaType: file ? (file.type.includes('image')?'image':file.type.includes('video')?'video':'doc') : null,
-            fileName: file ? file.name : null
+        // Common cleanup
+        const resetUI = () => {
+             messageInput.value = '';
+             messageInput.style.height = 'auto';
+             document.getElementById('fileInput').value = '';
+             document.getElementById('fileInfoBar').classList.remove('show');
+             sendBtn.disabled = true;
+             activeReplyMessage = null;
+             document.getElementById('replyingToBar').classList.remove('show');
         };
 
-        // UI Optimistic Update
-        chatHistory.push(msg);
-        saveChatHistory();
-        chatBox.appendChild(createMsgEl(msg));
-        chatBox.scrollTop = chatBox.scrollHeight;
+        // Helper to send individual item
+        const sendItem = async (text, file) => {
+            const tempId = Date.now().toString() + Math.random().toString();
+            const msg = {
+                id: tempId,
+                text: text,
+                sender: 'me',
+                timestamp: Date.now(),
+                replyTo: activeReplyMessage ? activeReplyMessage.id : null,
+                reactions: {},
+                mediaUrl: file ? URL.createObjectURL(file) : null,
+                mediaType: file ? (file.type.includes('image')?'image':file.type.includes('video')?'video':'doc') : null,
+                fileName: file ? file.name : null
+            };
 
-        const formData = new FormData();
-        formData.append('chat_id', CHAT_ID);
-        if(replyParam) formData.append('reply_parameters', JSON.stringify(replyParam));
+            // Update Local Chat
+            chatHistory.push(msg);
+            saveChatHistory();
+            chatBox.appendChild(createMsgEl(msg));
+            chatBox.scrollTop = chatBox.scrollHeight;
 
-        let url = `https://api.telegram.org/bot${TOKEN}/sendMessage`;
-        if(file) {
-            url = `https://api.telegram.org/bot${TOKEN}/${msg.mediaType === 'image' ? 'sendPhoto' : msg.mediaType === 'video' ? 'sendVideo' : 'sendDocument'}`;
-            formData.append(msg.mediaType === 'image' ? 'photo' : msg.mediaType === 'video' ? 'video' : 'document', file);
-            if(text) formData.append('caption', text);
-        } else {
-            formData.append('text', text);
-        }
+            const formData = new FormData();
+            formData.append('chat_id', CHAT_ID);
+            const replyParam = activeReplyMessage && activeReplyMessage.telegramMessageId ? { message_id: activeReplyMessage.telegramMessageId } : null;
+            if(replyParam) formData.append('reply_parameters', JSON.stringify(replyParam));
 
-        try {
-            const res = await fetch(url, { method: 'POST', body: formData });
-            const d = await res.json();
-            if(d.ok) {
-                const m = chatHistory.find(x => x.id === tempId);
-                if(m) m.telegramMessageId = d.result.message_id;
-                saveChatHistory();
+            let url = `https://api.telegram.org/bot${TOKEN}/sendMessage`;
+            if(file) {
+                url = `https://api.telegram.org/bot${TOKEN}/${msg.mediaType === 'image' ? 'sendPhoto' : msg.mediaType === 'video' ? 'sendVideo' : 'sendDocument'}`;
+                formData.append(msg.mediaType === 'image' ? 'photo' : msg.mediaType === 'video' ? 'video' : 'document', file);
+                if(text) formData.append('caption', text);
             } else {
-                showError("Failed to send message");
-                // Optional: visual indicator that specific message failed
+                formData.append('text', text);
             }
-        } catch(e) {
-            console.log(e);
-            showError("Network error");
-            throw e; // rethrow for loop handling
+
+            try {
+                const res = await fetch(url, { method: 'POST', body: formData });
+                const d = await res.json();
+                if(d.ok) {
+                    const m = chatHistory.find(x => x.id === tempId);
+                    if(m) m.telegramMessageId = d.result.message_id;
+                    saveChatHistory();
+                } else {
+                    throw new Error("API Error");
+                }
+            } catch(e) { 
+                console.log(e);
+                if(file) showFloatingError("⚠️ File Upload Failed!");
+                else showFloatingError("⚠️ Failed to Send Message!");
+            }
+        };
+
+        // Execution Logic
+        if (files.length > 0) {
+            // Send files loop
+            for (let i = 0; i < files.length; i++) {
+                // Attach text caption only to the first file (common Telegram behavior)
+                const caption = (i === 0) ? txt : ""; 
+                await sendItem(caption, files[i]);
+            }
+        } else {
+            // Text only
+            await sendItem(txt, null);
         }
+
+        resetUI();
     }
 
     function pollMessages() {
@@ -1016,8 +936,8 @@
             const t = activeMessageElement.innerText;
             navigator.clipboard.writeText(t);
             const n = document.getElementById('sentNotification');
-            n.classList.add('show');
-            setTimeout(() => n.classList.remove('show'), 2000);
+            n.style.display = 'flex';
+            setTimeout(() => n.style.display = 'none', 2000);
         }
         messageActionMenu.classList.remove('visible');
     }
@@ -1025,6 +945,15 @@
     function viewImg(url) {
         document.getElementById('fullImage').src = url;
         document.getElementById('modalContainer').style.display = 'flex';
+    }
+
+    // NEW: Popup Helper Function
+    function showFloatingError(message) {
+        const popup = document.createElement("div");
+        popup.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ff4d4d;color:white;padding:15px 25px;border-radius:5px;box-shadow:0 4px 6px rgba(0,0,0,0.1);z-index:9999;font-weight:bold;";
+        popup.innerText = message;
+        document.body.appendChild(popup);
+        setTimeout(() => popup.remove(), 3000);
     }
 
     init();
